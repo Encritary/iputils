@@ -954,6 +954,7 @@ int finish(struct ping_rts *rts)
 		long tmavg = rts->tsum / total;
 		long long tmvar;
 		double tmmed;
+		long tmp95;
 
 		if (rts->tsum < INT_MAX)
 			/* This slightly clumsy computation order is important to avoid
@@ -966,12 +967,15 @@ int finish(struct ping_rts *rts)
 
 		size_t logsize = rts->rtt_log_size;
 		qsort(rts->rtt_log, logsize, sizeof(*rts->rtt_log), compare_rtt);
-		tmmed = ((double)rts->rtt_log[(logsize - 1) / 2] + rts->rtt_log[logsize / 2]) / 2.0;
 
-		printf(_("rtt min/avg/med/max/mdev = %ld.%03ld/%lu.%03ld/%ld.%03ld/%ld.%03ld/%ld.%03ld ms"),
+		tmmed = ((double)rts->rtt_log[(logsize - 1) / 2] + rts->rtt_log[logsize / 2]) / 2.0;
+		tmp95 = rts->rtt_log[logsize - logsize / 20 - 1];
+
+		printf(_("rtt min/avg/med/p95/max/mdev = %ld.%03ld/%lu.%03ld/%ld.%03ld/%ld.%03ld/%ld.%03ld/%ld.%03ld ms"),
 		       (long)rts->tmin / 1000, (long)rts->tmin % 1000,
 		       (unsigned long)(tmavg / 1000), (long)(tmavg % 1000),
 		       (long)tmmed / 1000, (long)tmmed % 1000,
+		       (long)tmp95 / 1000, (long)tmp95 % 1000,
 		       (long)rts->tmax / 1000, (long)rts->tmax % 1000,
 		       (long)tmdev / 1000, (long)tmdev % 1000);
 		comma = ", ";
