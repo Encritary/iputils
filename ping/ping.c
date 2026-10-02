@@ -693,6 +693,7 @@ main(int argc, char **argv)
 
 	freeaddrinfo(result);
 	free(rts.outpack);
+	free(rts.rtt_log);
 
 	return ret_val;
 }

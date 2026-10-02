@@ -32,6 +32,8 @@
 
 #define _GNU_SOURCE
 
+#include <stdint.h>
+
 #include "iputils_common.h"
 #include "ping.h"
 
@@ -724,6 +726,27 @@ int main_loop(struct ping_rts *rts, ping_func_set_st *fset, socket_st *sock,
 	return finish(rts);
 }
 
+static void rtt_log_append(struct ping_rts *rts, long triptime)
+{
+	if (rts->rtt_log_size == rts->rtt_log_cap) {
+		size_t cap;
+		long *log;
+
+		if (rts->rtt_log_cap > SIZE_MAX / sizeof(*log) / 2)
+			error(2, 0, _("RTT log is too large"));
+
+		cap = rts->rtt_log_cap ? rts->rtt_log_cap * 2 : 128;
+		log = realloc(rts->rtt_log, cap * sizeof(*log));
+		if (!log)
+			error(2, errno, _("Cannot allocate RTT log"));
+
+		rts->rtt_log = log;
+		rts->rtt_log_cap = cap;
+	}
+
+	rts->rtt_log[rts->rtt_log_size++] = triptime;
+}
+
 int gather_statistics(struct ping_rts *rts, uint8_t *icmph, int icmplen,
 		      int cc, uint16_t seq, int hops,
 		      int csfailed, struct timeval *tv, char *from,
@@ -771,6 +794,7 @@ restamp:
 		}
 
 		if (!csfailed) {
+			rtt_log_append(rts, triptime);
 			rts->tsum += triptime;
 			rts->tsum2 += (double)((long long)triptime * (long long)triptime);
 			if (triptime < rts->tmin)
@@ -883,6 +907,13 @@ static long llsqrt(long long a)
 	return (long)x;
 }
 
+static int compare_rtt(const void *a, const void *b)
+{
+	long x = *(const long *)a;
+	long y = *(const long *)b;
+	return (x > y) - (x < y);
+}
+
 /*
  * finish --
  *	Print out statistics, and give up.
@@ -917,11 +948,12 @@ int finish(struct ping_rts *rts)
 
 	putchar('\n');
 
-	if (rts->nreceived && rts->timing) {
+	if (rts->nreceived && rts->timing && rts->rtt_log_size) {
 		double tmdev;
 		long total = rts->nreceived + rts->nrepeats;
 		long tmavg = rts->tsum / total;
 		long long tmvar;
+		double tmmed;
 
 		if (rts->tsum < INT_MAX)
 			/* This slightly clumsy computation order is important to avoid
@@ -932,9 +964,14 @@ int finish(struct ping_rts *rts)
 
 		tmdev = llsqrt(tmvar);
 
-		printf(_("rtt min/avg/max/mdev = %ld.%03ld/%lu.%03ld/%ld.%03ld/%ld.%03ld ms"),
+		size_t logsize = rts->rtt_log_size;
+		qsort(rts->rtt_log, logsize, sizeof(*rts->rtt_log), compare_rtt);
+		tmmed = ((double)rts->rtt_log[(logsize - 1) / 2] + rts->rtt_log[logsize / 2]) / 2.0;
+
+		printf(_("rtt min/avg/med/max/mdev = %ld.%03ld/%lu.%03ld/%ld.%03ld/%ld.%03ld/%ld.%03ld ms"),
 		       (long)rts->tmin / 1000, (long)rts->tmin % 1000,
 		       (unsigned long)(tmavg / 1000), (long)(tmavg % 1000),
+		       (long)tmmed / 1000, (long)tmmed % 1000,
 		       (long)rts->tmax / 1000, (long)rts->tmax % 1000,
 		       (long)tmdev / 1000, (long)tmdev % 1000);
 		comma = ", ";

@@ -1,7 +1,4 @@
-[![Build Status](https://github.com/iputils/iputils/actions/workflows/ci.yml/badge.svg)](https://github.com/iputils/iputils/actions/workflows/ci.yml)
-[![Coverity Status](https://scan.coverity.com/projects/1944/badge.svg?flat=1)](https://scan.coverity.com/projects/1944)
-
-The iputils package is set of small useful utilities for Linux networking.
+This fork of the iputils package was created as part of a laboratory assignment for the Parallel Computer Technologies course and contains a modified version of `ping` that computes additional RTT statistics.
 
 ## Installation
 ```

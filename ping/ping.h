@@ -195,6 +195,10 @@ struct ping_rts {
 	int rtt_addend;
 	uint16_t acked;
 	int pipesize;
+	/* RTT log */
+	long *rtt_log;
+	size_t rtt_log_size;
+	size_t rtt_log_cap;
 
 	ping_func_set_st ping4_func_set;
 	ping_func_set_st ping6_func_set;
