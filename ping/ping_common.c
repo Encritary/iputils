@@ -955,6 +955,8 @@ int finish(struct ping_rts *rts)
 		long long tmvar;
 		double tmmed;
 		long tmp95;
+		double jitsum = 0.0;
+		double jitter = 0.0;
 
 		if (rts->tsum < INT_MAX)
 			/* This slightly clumsy computation order is important to avoid
@@ -966,18 +968,28 @@ int finish(struct ping_rts *rts)
 		tmdev = llsqrt(tmvar);
 
 		size_t logsize = rts->rtt_log_size;
+
+		if (logsize >= 2) {
+			size_t i;
+			for (i = 1; i < logsize; i++)
+				jitsum += fabs((double)rts->rtt_log[i] -
+					       (double)rts->rtt_log[i - 1]);
+			jitter = jitsum / (logsize - 1);
+		}
+
 		qsort(rts->rtt_log, logsize, sizeof(*rts->rtt_log), compare_rtt);
 
 		tmmed = ((double)rts->rtt_log[(logsize - 1) / 2] + rts->rtt_log[logsize / 2]) / 2.0;
 		tmp95 = rts->rtt_log[logsize - logsize / 20 - 1];
 
-		printf(_("rtt min/avg/med/p95/max/mdev = %ld.%03ld/%lu.%03ld/%ld.%03ld/%ld.%03ld/%ld.%03ld/%ld.%03ld ms"),
+		printf(_("rtt min/avg/med/p95/max/mdev/jitter = %ld.%03ld/%lu.%03ld/%ld.%03ld/%ld.%03ld/%ld.%03ld/%ld.%03ld/%ld.%03ld ms"),
 		       (long)rts->tmin / 1000, (long)rts->tmin % 1000,
 		       (unsigned long)(tmavg / 1000), (long)(tmavg % 1000),
 		       (long)tmmed / 1000, (long)tmmed % 1000,
 		       (long)tmp95 / 1000, (long)tmp95 % 1000,
 		       (long)rts->tmax / 1000, (long)rts->tmax % 1000,
-		       (long)tmdev / 1000, (long)tmdev % 1000);
+		       (long)tmdev / 1000, (long)tmdev % 1000,
+		       (long)jitter / 1000, (long)jitter % 1000);
 		comma = ", ";
 	}
 	if (rts->pipesize > 1) {
