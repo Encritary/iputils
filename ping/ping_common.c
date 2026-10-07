@@ -943,6 +943,25 @@ int finish(struct ping_rts *rts)
 #endif
 		printf(_(", %g%% packet loss"),
 		       (float)((((long long)(rts->ntransmitted - rts->nreceived)) * 100.0) / rts->ntransmitted));
+		/* The receive bitmap only retains one cycle of sequence numbers. */
+		if (rts->ntransmitted <= MAX_DUP_CHK) {
+			long nlost_streak = 0;
+			long nlost_streak_max = 0;
+			long seq;
+
+			for (seq = 1; seq <= rts->ntransmitted; seq++) {
+				if (rcvd_test(rts, (uint16_t)seq)) {
+					nlost_streak = 0;
+				} else {
+					nlost_streak++;
+					if (nlost_streak > nlost_streak_max)
+						nlost_streak_max = nlost_streak;
+				}
+			}
+			printf(_(", max loss streak %ld"), nlost_streak_max);
+		} else {
+			printf(_(", max loss streak N/A"));
+		}
 		printf(_(", time %ldms"), 1000 * tv.tv_sec + (tv.tv_nsec + 500000) / 1000000);
 	}
 
